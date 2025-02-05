@@ -30,9 +30,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const addTransactionForm = document.getElementById('addTransactionForm');
   const incomeTotalElement = document.getElementById('incomeTotal');
   const expenseTotalElement = document.getElementById('expenseTotal');
+  const netEarningsElement = document.getElementById('netEarnings');
   const transactionTableBody = document.getElementById('transactionTableBody');
   const totalsByAccountElement = document.getElementById('totalsByAccount');
-  const totalsByCategoryElement = document.getElementById('totalsByCategory');
   const personNameField = document.getElementById('personNameField');
   const personNameInput = document.getElementById('personName');
   const otherCategoryField = document.getElementById('otherCategoryField');
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
       .toFixed(2);
   }
 
-  // Calculate totals by a field (account or category)
+  // Calculate totals by a field (account)
   function calculateTotalsBy(field, filteredTransactions) {
     return filteredTransactions.reduce((acc, t) => {
       let key = t[field];
@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function () {
     incomeChart.update();
   }
 
-  // Creative updateTotalsBy function for creative cards design
+  // Creative updateTotalsBy function for Totals by Account
   function updateTotalsBy(field, element, filteredTransactions) {
     let totals = calculateTotalsBy(field, filteredTransactions);
     element.innerHTML = '';
@@ -284,29 +284,18 @@ document.addEventListener('DOMContentLoaded', function () {
       let sign = amount >= 0 ? '+' : '-';
       let card = document.createElement('div');
       card.className = 'rounded-xl p-4 shadow text-white';
-      if (field === 'account') {
-        card.classList.add(
-          'bg-gradient-to-r',
-          'from-blue-500',
-          'to-indigo-500'
-        );
-      } else {
-        card.classList.add(
-          'bg-gradient-to-r',
-          'from-purple-500',
-          'to-pink-500'
-        );
-      }
+      // Use a gradient background for accounts
+      card.classList.add('bg-gradient-to-r', 'from-blue-500', 'to-indigo-500');
       card.innerHTML = `
-          <div class="font-bold text-lg">${key}</div>
-          <div class="text-sm">${sign} MAD ${Math.abs(amount)}</div>
-        `;
+        <div class="font-bold text-lg">${key}</div>
+        <div class="text-sm">${sign} MAD ${Math.abs(amount)}</div>
+      `;
       container.appendChild(card);
     }
     element.appendChild(container);
   }
 
-  // Update UI: table, totals, and charts
+  // Update UI: table, totals, charts, and net earnings
   function updateUI() {
     let selectedMonth = monthFilter.value;
     let filteredTransactions = transactions.filter((t) => {
@@ -315,11 +304,20 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('Updating UI. Selected month:', selectedMonth);
     console.log('Filtered transactions:', filteredTransactions);
 
-    incomeTotalElement.innerText =
-      'MAD' + calculateTotal('income', filteredTransactions);
-    expenseTotalElement.innerText =
-      'MAD' + calculateTotal('expense', filteredTransactions);
+    let totalIncome = parseFloat(
+      calculateTotal('income', filteredTransactions)
+    );
+    let totalExpense = parseFloat(
+      calculateTotal('expense', filteredTransactions)
+    );
+    incomeTotalElement.innerText = 'MAD' + totalIncome.toFixed(2);
+    expenseTotalElement.innerText = 'MAD' + totalExpense.toFixed(2);
 
+    // Calculate net earnings (income minus expense)
+    let netEarnings = totalIncome - totalExpense;
+    netEarningsElement.innerText = 'MAD' + netEarnings.toFixed(2);
+
+    // Update transaction table
     transactionTableBody.innerHTML = '';
     filteredTransactions.forEach((t) => {
       let rowClass = t.type === 'income' ? 'bg-green-50' : 'bg-red-50';
@@ -327,25 +325,25 @@ document.addEventListener('DOMContentLoaded', function () {
       row.className = rowClass;
       let personDisplay = t.category === 'Credit Given' ? t.personName : '-';
       row.innerHTML = `
-          <td class="px-4 py-2 border-b text-sm">${new Date(
-            t.date
-          ).toLocaleDateString()}</td>
-          <td class="px-4 py-2 border-b text-sm">${
-            t.type.charAt(0).toUpperCase() + t.type.slice(1)
-          }</td>
-          <td class="px-4 py-2 border-b text-sm">${t.account}</td>
-          <td class="px-4 py-2 border-b text-sm">${t.category}</td>
-          <td class="px-4 py-2 border-b text-sm">${personDisplay}</td>
-          <td class="px-4 py-2 border-b text-sm">MAD${t.amount.toFixed(2)}</td>
-          <td class="px-4 py-2 border-b text-sm">
-            <button class="edit-btn px-2 py-1 bg-blue-500 text-white rounded mr-2" data-id="${
-              t.id
-            }">Edit</button>
-            <button class="delete-btn px-2 py-1 bg-red-500 text-white rounded" data-id="${
-              t.id
-            }">Delete</button>
-          </td>
-        `;
+        <td class="px-4 py-2 border-b text-sm">${new Date(
+          t.date
+        ).toLocaleDateString()}</td>
+        <td class="px-4 py-2 border-b text-sm">${
+          t.type.charAt(0).toUpperCase() + t.type.slice(1)
+        }</td>
+        <td class="px-4 py-2 border-b text-sm">${t.account}</td>
+        <td class="px-4 py-2 border-b text-sm">${t.category}</td>
+        <td class="px-4 py-2 border-b text-sm">${personDisplay}</td>
+        <td class="px-4 py-2 border-b text-sm">MAD${t.amount.toFixed(2)}</td>
+        <td class="px-4 py-2 border-b text-sm">
+          <button class="edit-btn px-2 py-1 bg-blue-500 text-white rounded mr-2" data-id="${
+            t.id
+          }">Edit</button>
+          <button class="delete-btn px-2 py-1 bg-red-500 text-white rounded" data-id="${
+            t.id
+          }">Delete</button>
+        </td>
+      `;
       transactionTableBody.appendChild(row);
 
       // Edit button event
@@ -398,7 +396,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     updateTotalsBy('account', totalsByAccountElement, filteredTransactions);
-    updateTotalsBy('category', totalsByCategoryElement, filteredTransactions);
 
     let expenseData = filteredTransactions
       .filter((t) => t.type === 'expense')
