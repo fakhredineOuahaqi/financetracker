@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Responsive meta tag for PWA -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Enhanced Finance Tracker</title>
+    <!-- Tailwind CSS -->
+    <link href="./output.css" rel="stylesheet" />
+    <!-- Manifest  -->
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#4F46E5" />
+    <!-- Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css?family=Inter&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Custom Styles -->
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      /* Optional: Force the charts to be smaller */
+      .small-chart {
+        max-width: 300px;
+        max-height: 300px;
+        margin: auto;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100">
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow">
+      <div
+        class="container mx-auto px-4 py-3 flex flex-wrap items-center justify-between"
+      >
+        <a class="text-xl font-bold text-gray-800" href="#">FinanceTracker</a>
+        <!-- Navigation Links -->
+        <div class="flex flex-wrap">
+          <a class="text-gray-800 hover:text-gray-600 mx-2 my-1" href="#"
+            >Dashboard</a
+          >
+          <a class="text-gray-800 hover:text-gray-600 mx-2 my-1" href="#"
+            >Transactions</a
+          >
+          <a class="text-gray-800 hover:text-gray-600 mx-2 my-1" href="#"
+            >Investments</a
+          >
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-4">
+      <!-- Filter by Month -->
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-medium"
+          >Filter by Month:</label
+        >
+        <select
+          id="monthFilter"
+          class="mt-2 p-2 border rounded w-full sm:w-1/2"
+        >
+          <!-- Options populated dynamically -->
+        </select>
+      </div>
+
+      <!-- Cards Section -->
+      <div class="flex flex-wrap -mx-2 mb-4">
+        <!-- Total Income Card -->
+        <div class="w-full sm:w-1/2 px-2 mb-4">
+          <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-bold mb-2">Total Income</h2>
+            <p class="text-3xl" id="incomeTotal">MAD0.00</p>
+          </div>
+        </div>
+        <!-- Total Expenses Card -->
+        <div class="w-full sm:w-1/2 px-2 mb-4">
+          <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-bold mb-2">Total Expenses</h2>
+            <p class="text-3xl" id="expenseTotal">MAD0.00</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Transaction Form -->
+      <div class="bg-white rounded-lg shadow p-4 mb-6">
+        <h2 class="text-xl font-bold mb-4">Add Transaction</h2>
+        <form id="addTransactionForm" class="flex flex-wrap -mx-2">
+          <!-- Transaction Type -->
+          <div class="w-full sm:w-1/4 px-2 mb-4">
+            <label class="block text-gray-700">Type:</label>
+            <div class="mt-2">
+              <label class="inline-flex items-center">
+                <input
+                  type="radio"
+                  class="form-radio"
+                  name="type"
+                  value="income"
+                  checked
+                />
+                <span class="ml-2">Income</span>
+              </label>
+              <label class="inline-flex items-center ml-4">
+                <input
+                  type="radio"
+                  class="form-radio"
+                  name="type"
+                  value="expense"
+                />
+                <span class="ml-2">Expense</span>
+              </label>
+            </div>
+          </div>
+          <!-- Amount -->
+          <div class="w-full sm:w-1/4 px-2 mb-4">
+            <label class="block text-gray-700">Amount:</label>
+            <input
+              type="number"
+              id="amount"
+              class="w-full mt-2 p-2 border rounded"
+              required
+            />
+          </div>
+          <!-- Category (populated dynamically) -->
+          <div class="w-full sm:w-1/4 px-2 mb-4">
+            <label class="block text-gray-700">Category:</label>
+            <select
+              id="category"
+              class="w-full mt-2 p-2 border rounded"
+              required
+            ></select>
+          </div>
+          <!-- Account -->
+          <div class="w-full sm:w-1/4 px-2 mb-4">
+            <label class="block text-gray-700">Account:</label>
+            <select
+              id="account"
+              class="w-full mt-2 p-2 border rounded"
+              required
+            >
+              <option value="CIH">CIH</option>
+              <option value="Payoneer">Payoneer</option>
+              <option value="PayPal">PayPal</option>
+              <option value="Cash Plus">Cash Plus</option>
+            </select>
+          </div>
+          <!-- Other Category (Visible when "Other" is selected) -->
+          <div
+            class="w-full sm:w-1/2 px-2 mb-4"
+            id="otherCategoryField"
+            style="display: none"
+          >
+            <label class="block text-gray-700">Specify Category:</label>
+            <input
+              type="text"
+              id="otherCategory"
+              class="w-full mt-2 p-2 border rounded"
+            />
+          </div>
+          <!-- Person's Name (Visible only for expense "Credit Given") -->
+          <div
+            class="w-full sm:w-1/2 px-2 mb-4"
+            id="personNameField"
+            style="display: none"
+          >
+            <label class="block text-gray-700">Person's Name:</label>
+            <input
+              type="text"
+              id="personName"
+              class="w-full mt-2 p-2 border rounded"
+            />
+          </div>
+          <!-- Submit Button -->
+          <div class="w-full px-2 mb-4">
+            <button
+              type="submit"
+              class="w-full bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Add Transaction
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Transactions Table -->
+      <div class="bg-white rounded-lg shadow p-4 mb-6 overflow-x-auto">
+        <h2 class="text-xl font-bold mb-4">Transactions</h2>
+        <table class="min-w-full leading-normal">
+          <thead>
+            <tr>
+              <th
+                class="px-4 py-2 border-b bg-gray-100 text-left text-sm font-semibold text-gray-700"
+              >
+                Date
+              </th>
+              <th
+                class="px-4 py-2 border-b bg-gray-100 text-left text-sm font-semibold text-gray-700"
+              >
+                Type
+              </th>
+              <th
+                class="px-4 py-2 border-b bg-gray-100 text-left text-sm font-semibold text-gray-700"
+              >
+                Account
+              </th>
+              <th
+                class="px-4 py-2 border-b bg-gray-100 text-left text-sm font-semibold text-gray-700"
+              >
+                Category
+              </th>
+              <th
+                class="px-4 py-2 border-b bg-gray-100 text-left text-sm font-semibold text-gray-700"
+              >
+                Person
+              </th>
+              <th
+                class="px-4 py-2 border-b bg-gray-100 text-left text-sm font-semibold text-gray-700"
+              >
+                Amount
+              </th>
+              <th
+                class="px-4 py-2 border-b bg-gray-100 text-left text-sm font-semibold text-gray-700"
+              >
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody id="transactionTableBody">
+            <!-- Transactions will be dynamically added here -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Totals by Account and Category (Creative Cards) -->
+      <div class="flex flex-wrap -mx-2 mb-6">
+        <!-- Totals by Account -->
+        <div class="w-full md:w-1/2 px-2 mb-4">
+          <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-bold mb-4">Totals by Account</h2>
+            <div id="totalsByAccount"></div>
+          </div>
+        </div>
+        <!-- Totals by Category -->
+        <div class="w-full md:w-1/2 px-2 mb-4">
+          <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-bold mb-4">Totals by Category</h2>
+            <div id="totalsByCategory"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Expense Breakdown Chart -->
+        <div class="bg-white rounded-lg shadow p-4">
+          <h2 class="text-xl font-bold mb-4 text-center">Expense Breakdown</h2>
+          <canvas id="financeChart" class="small-chart"></canvas>
+        </div>
+        <!-- Income Breakdown Chart -->
+        <div class="bg-white rounded-lg shadow p-4">
+          <h2 class="text-xl font-bold mb-4 text-center">Income Breakdown</h2>
+          <canvas id="incomeChart" class="small-chart"></canvas>
+        </div>
+        <!-- Income vs Expense Bar Chart -->
+        <div class="bg-white rounded-lg shadow p-4">
+          <h2 class="text-xl font-bold mb-4 text-center">Income vs Expense</h2>
+          <canvas id="incomeExpenseChart" class="small-chart"></canvas>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white shadow mt-6">
+      <div class="container mx-auto px-4 py-4 text-center">
+        <p class="text-gray-600">
+          © 2023 My Finance Tracker. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="app.js"></script>
+  </body>
+</html>
