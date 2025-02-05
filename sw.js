@@ -1,11 +1,10 @@
 const CACHE_NAME = 'finance-tracker-cache-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/app.js',
-  // include any CSS, images, or additional files you want to cache
-  'https://cdn.tailwindcss.com',
-  'https://cdn.jsdelivr.net/npm/chart.js',
+  '/', // Root
+  '/index.html', // Your main HTML file
+  '/app.js', // Your main JS file
+  '/output.css', // Your compiled Tailwind CSS file
+  '/icons/icon-512x512.png', // Example icon (adjust path if needed)
 ];
 
 // Install the service worker and cache static assets
@@ -22,7 +21,6 @@ self.addEventListener('install', (event) => {
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
-      // Return the cached response if found, else fetch from network.
       return response || fetch(event.request);
     })
   );
