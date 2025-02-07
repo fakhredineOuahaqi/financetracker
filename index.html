@@ -2,12 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Responsive meta tag for PWA -->
+    <!-- Responsive meta tag -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Enhanced Finance Tracker</title>
     <!-- Tailwind CSS -->
     <link href="./output.css" rel="stylesheet" />
-    <!-- Manifest  -->
+    <!-- Manifest -->
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#4F46E5" />
     <!-- Chart.js via CDN -->
@@ -22,11 +22,28 @@
       body {
         font-family: 'Inter', sans-serif;
       }
-      /* Optional: Force the charts to be smaller */
+      /* Force charts to be smaller */
       .small-chart {
         max-width: 300px;
         max-height: 300px;
         margin: auto;
+      }
+      /* Centered modal styling */
+      #signInModal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.6);
+      }
+      /* Hide modal by default */
+      #signInModal.hidden {
+        display: none;
       }
     </style>
   </head>
@@ -49,8 +66,65 @@
             >Investments</a
           >
         </div>
+        <!-- Auth Button -->
+        <div id="authButtonContainer">
+          <button
+            id="authButton"
+            class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Sign In
+          </button>
+        </div>
       </div>
     </nav>
+
+    <!-- Sign In Modal -->
+    <div id="signInModal" class="hidden">
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-sm p-6">
+        <h2 class="text-2xl font-bold mb-4 text-center">Sign In</h2>
+        <form id="signInForm" class="space-y-4">
+          <div>
+            <label class="block text-gray-700 font-semibold" for="email"
+              >Email</label
+            >
+            <input
+              type="email"
+              id="email"
+              class="mt-1 w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-200"
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+          <div>
+            <label class="block text-gray-700 font-semibold" for="password"
+              >Password</label
+            >
+            <input
+              type="password"
+              id="password"
+              class="mt-1 w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-200"
+              placeholder="Your password"
+              required
+            />
+          </div>
+          <div class="flex justify-end space-x-2">
+            <button
+              type="button"
+              id="cancelSignIn"
+              class="px-4 py-2 rounded border text-gray-600 hover:bg-gray-100 transition duration-300"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Sign In
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- Main Content -->
     <main class="container mx-auto p-4">
@@ -70,21 +144,35 @@
       <!-- Cards Section -->
       <div class="flex flex-wrap -mx-2 mb-4">
         <!-- Total Income Card -->
-        <div class="w-full sm:w-1/3 px-2 mb-4">
+        <div class="w-full sm:w-1/5 px-2 mb-4">
           <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-bold mb-2">Total Income</h2>
             <p class="text-3xl" id="incomeTotal">MAD0.00</p>
           </div>
         </div>
-        <!-- Total Expenses Card -->
-        <div class="w-full sm:w-1/3 px-2 mb-4">
+        <!-- Total Expenses Card (excluding Credit Given and Crypto Investment) -->
+        <div class="w-full sm:w-1/5 px-2 mb-4">
           <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-bold mb-2">Total Expenses</h2>
             <p class="text-3xl" id="expenseTotal">MAD0.00</p>
           </div>
         </div>
-        <!-- Net Earnings Card -->
-        <div class="w-full sm:w-1/3 px-2 mb-4">
+        <!-- Credit Given Card -->
+        <div class="w-full sm:w-1/5 px-2 mb-4">
+          <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-bold mb-2">Credit Given</h2>
+            <p class="text-3xl" id="creditGivenTotal">MAD0.00</p>
+          </div>
+        </div>
+        <!-- Crypto Investment Card -->
+        <div class="w-full sm:w-1/5 px-2 mb-4">
+          <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-bold mb-2">Crypto Investment</h2>
+            <p class="text-3xl" id="cryptoInvestmentTotal">MAD0.00</p>
+          </div>
+        </div>
+        <!-- Net Earnings Card (income - expense + credit given + crypto investment) -->
+        <div class="w-full sm:w-1/5 px-2 mb-4">
           <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-bold mb-2">Net Earnings</h2>
             <p class="text-3xl" id="netEarnings">MAD0.00</p>
@@ -236,17 +324,39 @@
             </tr>
           </thead>
           <tbody id="transactionTableBody">
-            <!-- Transactions will be dynamically added here -->
+            <!-- Transactions will be added dynamically -->
           </tbody>
         </table>
       </div>
 
-      <!-- Totals by Account (Creative Cards) -->
+      <!-- Totals by Account Section (Split) -->
       <div class="flex flex-wrap -mx-2 mb-6">
-        <div class="w-full px-2">
+        <!-- Income by Account -->
+        <div class="w-full sm:w-1/4 px-2 mb-4">
           <div class="bg-white rounded-lg shadow p-4">
-            <h2 class="text-xl font-bold mb-4">Totals by Account</h2>
-            <div id="totalsByAccount"></div>
+            <h2 class="text-xl font-bold mb-4">Income by Account</h2>
+            <div id="incomeByAccount"></div>
+          </div>
+        </div>
+        <!-- Expense by Account (excluding Credit Given and Crypto Investment) -->
+        <div class="w-full sm:w-1/4 px-2 mb-4">
+          <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-bold mb-4">Expense by Account</h2>
+            <div id="expenseByAccount"></div>
+          </div>
+        </div>
+        <!-- Credit Given by Account -->
+        <div class="w-full sm:w-1/4 px-2 mb-4">
+          <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-bold mb-4">Credit Given by Account</h2>
+            <div id="creditGivenByAccount"></div>
+          </div>
+        </div>
+        <!-- Crypto Investment by Account -->
+        <div class="w-full sm:w-1/4 px-2 mb-4">
+          <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-bold mb-4">Crypto Investment by Account</h2>
+            <div id="cryptoInvestmentByAccount"></div>
           </div>
         </div>
       </div>
@@ -263,9 +373,11 @@
           <h2 class="text-xl font-bold mb-4 text-center">Income Breakdown</h2>
           <canvas id="incomeChart" class="small-chart"></canvas>
         </div>
-        <!-- Income vs Expense Bar Chart -->
+        <!-- Income vs Expense vs Credit vs Crypto Bar Chart -->
         <div class="bg-white rounded-lg shadow p-4">
-          <h2 class="text-xl font-bold mb-4 text-center">Income vs Expense</h2>
+          <h2 class="text-xl font-bold mb-4 text-center">
+            Income vs Expense vs Credit vs Crypto
+          </h2>
           <canvas id="incomeExpenseChart" class="small-chart"></canvas>
         </div>
       </div>
@@ -278,7 +390,6 @@
       </div>
     </footer>
 
-    <!-- JavaScript -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
@@ -296,6 +407,20 @@
         });
       }
     </script>
-    <script src="app.js"></script>
+    <!-- Firebase Initialization (already configured) -->
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js';
+      const firebaseConfig = {
+        apiKey: 'AIzaSyCGmob9ZqRV9i6wLKpZ3LyakyK2zA1DtUs',
+        authDomain: 'earnify-60037.firebaseapp.com',
+        projectId: 'earnify-60037',
+        storageBucket: 'earnify-60037.firebasestorage.app',
+        messagingSenderId: '235968394203',
+        appId: '1:235968394203:web:2c84883f1d390e2cd9edfe',
+      };
+      initializeApp(firebaseConfig);
+    </script>
+    <!-- Main App Logic -->
+    <script type="module" src="app.js"></script>
   </body>
 </html>
