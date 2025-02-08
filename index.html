@@ -171,7 +171,7 @@
             <p class="text-3xl" id="cryptoInvestmentTotal">MAD0.00</p>
           </div>
         </div>
-        <!-- Net Earnings Card (income - expense + credit given + crypto investment) -->
+        <!-- Net Earnings Card -->
         <div class="w-full sm:w-1/5 px-2 mb-4">
           <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-bold mb-2">Net Earnings</h2>
@@ -279,6 +279,49 @@
           </div>
         </form>
       </div>
+      <!-- Additional Filters -->
+      <div class="mb-4 flex flex-wrap gap-4">
+        <div class="w-full sm:w-1/4">
+          <label class="block text-gray-700 text-sm font-medium"
+            >Filter by Type:</label
+          >
+          <select id="filterType" class="mt-1 p-2 border rounded w-full">
+            <option value="">All</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div class="w-full sm:w-1/4">
+          <label class="block text-gray-700 text-sm font-medium"
+            >Filter by Account:</label
+          >
+          <select id="filterAccount" class="mt-1 p-2 border rounded w-full">
+            <option value="">All</option>
+            <option value="CIH">CIH</option>
+            <option value="Payoneer">Payoneer</option>
+            <option value="PayPal">PayPal</option>
+            <option value="Cash Plus">Cash Plus</option>
+          </select>
+        </div>
+        <div class="w-full sm:w-1/4">
+          <label class="block text-gray-700 text-sm font-medium"
+            >Filter by Category:</label
+          >
+          <select id="filterCategory" class="mt-1 p-2 border rounded w-full">
+            <option value="">All</option>
+            <option value="Credit Given">Credit Given</option>
+            <option value="Crypto Investment">Crypto Investment</option>
+            <option value="Work Expense">Work Expense</option>
+            <option value="Leisure">Leisure</option>
+            <option value="Social Media">Social Media</option>
+            <option value="Airbnb">Airbnb</option>
+            <option value="Agyweb">Agyweb</option>
+            <option value="Udemy">Udemy</option>
+            <option value="iLearnCode">iLearnCode</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
 
       <!-- Transactions Table -->
       <div class="bg-white rounded-lg shadow p-4 mb-6 overflow-x-auto">
@@ -332,31 +375,38 @@
       <!-- Totals by Account Section (Split) -->
       <div class="flex flex-wrap -mx-2 mb-6">
         <!-- Income by Account -->
-        <div class="w-full sm:w-1/4 px-2 mb-4">
+        <div class="w-full sm:w-1/5 px-2 mb-4">
           <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-bold mb-4">Income by Account</h2>
             <div id="incomeByAccount"></div>
           </div>
         </div>
         <!-- Expense by Account (excluding Credit Given and Crypto Investment) -->
-        <div class="w-full sm:w-1/4 px-2 mb-4">
+        <div class="w-full sm:w-1/5 px-2 mb-4">
           <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-bold mb-4">Expense by Account</h2>
             <div id="expenseByAccount"></div>
           </div>
         </div>
         <!-- Credit Given by Account -->
-        <div class="w-full sm:w-1/4 px-2 mb-4">
+        <div class="w-full sm:w-1/5 px-2 mb-4">
           <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-bold mb-4">Credit Given by Account</h2>
             <div id="creditGivenByAccount"></div>
           </div>
         </div>
         <!-- Crypto Investment by Account -->
-        <div class="w-full sm:w-1/4 px-2 mb-4">
+        <div class="w-full sm:w-1/5 px-2 mb-4">
           <div class="bg-white rounded-lg shadow p-4">
             <h2 class="text-xl font-bold mb-4">Crypto Investment by Account</h2>
             <div id="cryptoInvestmentByAccount"></div>
+          </div>
+        </div>
+        <!-- Net Earnings by Account -->
+        <div class="w-full sm:w-1/5 px-2 mb-4">
+          <div class="bg-white rounded-lg shadow p-4">
+            <h2 class="text-xl font-bold mb-4">Net Earnings by Account</h2>
+            <div id="netEarningByAccount"></div>
           </div>
         </div>
       </div>
@@ -389,7 +439,6 @@
         <p class="text-gray-600">Made with ❤️ by Fakhredine Codes</p>
       </div>
     </footer>
-
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {

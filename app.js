@@ -38,22 +38,29 @@ const typeRadios = document.querySelectorAll('input[name="type"]');
 const categorySelect = document.getElementById('category');
 const monthFilter = document.getElementById('monthFilter');
 const addTransactionForm = document.getElementById('addTransactionForm');
+
 const incomeTotalElement = document.getElementById('incomeTotal');
 const expenseTotalElement = document.getElementById('expenseTotal');
 const creditGivenTotalElement = document.getElementById('creditGivenTotal');
-// New: Crypto Investment Total Element (ensure your HTML includes this)
 const cryptoInvestmentTotalElement = document.getElementById(
   'cryptoInvestmentTotal'
 );
 const netEarningsElement = document.getElementById('netEarnings');
 const transactionTableBody = document.getElementById('transactionTableBody');
+
 const incomeByAccountEl = document.getElementById('incomeByAccount');
 const expenseByAccountEl = document.getElementById('expenseByAccount');
 const creditGivenByAccountEl = document.getElementById('creditGivenByAccount');
-// New: Crypto Investment by Account Element (ensure your HTML includes this)
 const cryptoInvestmentByAccountEl = document.getElementById(
   'cryptoInvestmentByAccount'
 );
+// New container for net earnings by account
+// (Ensure your HTML contains an element with ID 'netEarningByAccount')
+
+// New Filter Controls (ensure these exist in your HTML)
+const filterType = document.getElementById('filterType');
+const filterAccount = document.getElementById('filterAccount');
+const filterCategory = document.getElementById('filterCategory');
 
 const personNameField = document.getElementById('personNameField');
 const personNameInput = document.getElementById('personName');
@@ -219,6 +226,19 @@ populateMonthFilter();
 populateCategoryDropdown();
 
 // -----------------------
+// Additional Filter Event Listeners
+// -----------------------
+if (filterType) {
+  filterType.addEventListener('change', updateUI);
+}
+if (filterAccount) {
+  filterAccount.addEventListener('change', updateUI);
+}
+if (filterCategory) {
+  filterCategory.addEventListener('change', updateUI);
+}
+
+// -----------------------
 // Firestore CRUD Functions
 // -----------------------
 async function firestoreAddTransaction(transaction) {
@@ -272,9 +292,30 @@ async function refreshTransactions() {
 function updateUI() {
   const selectedMonth = monthFilter.value;
   // Filter transactions by month (using the transaction date)
-  const filteredTransactions = transactions.filter((t) => {
+  let filteredTransactions = transactions.filter((t) => {
     return formatDateToMonth(new Date(t.date)) === selectedMonth;
   });
+
+  // Apply additional filters from the new filter controls:
+  if (filterType && filterType.value) {
+    filteredTransactions = filteredTransactions.filter(
+      (t) => t.type === filterType.value
+    );
+  }
+  if (filterAccount && filterAccount.value) {
+    filteredTransactions = filteredTransactions.filter(
+      (t) => t.account === filterAccount.value
+    );
+  }
+  if (filterCategory && filterCategory.value) {
+    filteredTransactions = filteredTransactions.filter(
+      (t) => t.category === filterCategory.value
+    );
+  }
+
+  // Sort transactions by date descending (most recent first)
+  filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
   console.log('Updating UI for month:', selectedMonth, filteredTransactions);
 
   // Calculate totals:
@@ -296,26 +337,21 @@ function updateUI() {
   const totalCryptoInvestment = filteredTransactions
     .filter((t) => t.type === 'expense' && t.category === 'Crypto Investment')
     .reduce((sum, t) => sum + t.amount, 0);
+
   incomeTotalElement.innerText = 'MAD' + totalIncome.toFixed(2);
   expenseTotalElement.innerText = 'MAD' + totalExpense.toFixed(2);
   creditGivenTotalElement.innerText = 'MAD' + totalCreditGiven.toFixed(2);
   cryptoInvestmentTotalElement.innerText =
     'MAD' + totalCryptoInvestment.toFixed(2);
-  // Net Earnings: income - expense + credit given + crypto investment
+  // Net Earnings: income - expense (do not add Credit Given or Crypto Investment)
   netEarningsElement.innerText =
-    'MAD' +
-    (
-      totalIncome -
-      totalExpense +
-      totalCreditGiven +
-      totalCryptoInvestment
-    ).toFixed(2);
+    'MAD' + (totalIncome - totalExpense).toFixed(2);
 
   // Update transactions table
   transactionTableBody.innerHTML = '';
   filteredTransactions.forEach((t) => {
     // Use different row classes:
-    // Income: green, Expense: red, Credit Given: yellow, Crypto Investment: a light blue shade
+    // Income: green, Expense: red, Credit Given: yellow, Crypto Investment: light blue
     let rowClass = '';
     if (t.type === 'income') {
       rowClass = 'bg-green-50';
@@ -369,6 +405,8 @@ function updateUI() {
 
   // Update totals by account
   updateTotalsByAccount(filteredTransactions);
+  // Update net earnings by account (net = income - expense)
+  updateNetEarningByAccount(filteredTransactions);
 
   // Update charts
   updateIncomeExpenseChart(filteredTransactions);
@@ -381,74 +419,52 @@ function capitalizeFirstLetter(string) {
 }
 
 // -----------------------
-// Chart Update Functions (Chart.js)
+// Update Net Earnings by Account Function
 // -----------------------
-function updateIncomeExpenseChart(filteredTransactions) {
-  const income = filteredTransactions
-    .filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const expense = filteredTransactions
-    .filter(
-      (t) =>
-        t.type === 'expense' &&
-        t.category !== 'Credit Given' &&
-        t.category !== 'Crypto Investment'
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-  const creditGiven = filteredTransactions
-    .filter((t) => t.type === 'expense' && t.category === 'Credit Given')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const cryptoInvestment = filteredTransactions
-    .filter((t) => t.type === 'expense' && t.category === 'Crypto Investment')
-    .reduce((sum, t) => sum + t.amount, 0);
-  incomeExpenseChart.data.datasets[0].data = [
-    income,
-    expense,
-    creditGiven,
-    cryptoInvestment,
-  ];
-  incomeExpenseChart.update();
-}
+function updateNetEarningByAccount(filteredTransactions) {
+  const incomeByAcc = {};
+  const expenseByAcc = {};
 
-function updateIncomeChart(filteredTransactions) {
-  const incomeData = filteredTransactions
-    .filter((t) => t.type === 'income')
-    .reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + t.amount;
-      return acc;
-    }, {});
-  incomeChart.data.labels = Object.keys(incomeData);
-  incomeChart.data.datasets[0].data = Object.values(incomeData);
-  incomeChart.data.datasets[0].backgroundColor = incomeChart.data.labels.map(
-    (_, index) => {
-      const hue = (index * 45 + 30) % 360;
-      return `hsl(${hue}, 70%, 70%)`;
+  filteredTransactions.forEach((t) => {
+    if (t.type === 'income') {
+      incomeByAcc[t.account] = (incomeByAcc[t.account] || 0) + t.amount;
+    } else if (t.type === 'expense') {
+      // Only count expenses that are not Credit Given or Crypto Investment
+      if (t.category !== 'Credit Given' && t.category !== 'Crypto Investment') {
+        expenseByAcc[t.account] = (expenseByAcc[t.account] || 0) + t.amount;
+      }
     }
-  );
-  incomeChart.update();
-}
+  });
 
-function updateFinanceChart(filteredTransactions) {
-  const expenseData = filteredTransactions
-    .filter(
-      (t) =>
-        t.type === 'expense' &&
-        t.category !== 'Credit Given' &&
-        t.category !== 'Crypto Investment'
-    )
-    .reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + t.amount;
-      return acc;
-    }, {});
-  financeChart.data.labels = Object.keys(expenseData);
-  financeChart.data.datasets[0].data = Object.values(expenseData);
-  financeChart.data.datasets[0].backgroundColor = financeChart.data.labels.map(
-    (_, index) => {
-      const hue = (index * 45) % 360;
-      return `hsl(${hue}, 70%, 70%)`;
-    }
-  );
-  financeChart.update();
+  // Get the union of all accounts
+  const allAccounts = new Set([
+    ...Object.keys(incomeByAcc),
+    ...Object.keys(expenseByAcc),
+  ]);
+
+  const netByAcc = {};
+  allAccounts.forEach((acc) => {
+    const income = incomeByAcc[acc] || 0;
+    const expense = expenseByAcc[acc] || 0;
+    // Net Earnings by account: income - expense
+    netByAcc[acc] = income - expense;
+  });
+
+  // Update the net earnings by account section (HTML element with ID 'netEarningByAccount')
+  const netEarningByAccountEl = document.getElementById('netEarningByAccount');
+  netEarningByAccountEl.innerHTML = '';
+  const container = document.createElement('div');
+  container.className = 'grid grid-cols-1 sm:grid-cols-2 gap-4';
+  for (const acc in netByAcc) {
+    const card = document.createElement('div');
+    card.className = 'rounded-xl p-4 shadow bg-indigo-500 text-white';
+    card.innerHTML = `<div class="font-bold text-lg">${acc}</div>
+                      <div class="text-sm">MAD ${netByAcc[acc].toFixed(
+                        2
+                      )}</div>`;
+    container.appendChild(card);
+  }
+  netEarningByAccountEl.appendChild(container);
 }
 
 // -----------------------
@@ -512,7 +528,6 @@ function updateTotalsByAccount(filteredTransactions) {
   creditContainer.className = 'grid grid-cols-1 sm:grid-cols-2 gap-4';
   for (const acc in creditGivenByAcc) {
     const card = document.createElement('div');
-    // If the bg-yellow-500 is not showing, try inline style as a fallback:
     card.className = 'rounded-xl p-4 shadow text-white';
     card.style.backgroundColor = '#F59E0B'; // Tailwind yellow-500 hex color
     card.innerHTML = `<div class="font-bold text-lg">${acc}</div>
@@ -612,7 +627,6 @@ window.editTransaction = function (transactionId) {
   const currentType = transaction.type;
   const options =
     currentType === 'income' ? incomeCategories : expenseCategories;
-  // If transaction.category is either in the options or is "Credit Given" or "Crypto Investment", use it; otherwise set to Other.
   if (
     options.includes(transaction.category) ||
     transaction.category === 'Credit Given' ||
@@ -654,6 +668,11 @@ window.removeTransaction = async function (transactionId) {
 
 // Listen for month filter changes
 monthFilter.addEventListener('change', updateUI);
+
+// Also listen for the additional filter controls
+if (filterType) filterType.addEventListener('change', updateUI);
+if (filterAccount) filterAccount.addEventListener('change', updateUI);
+if (filterCategory) filterCategory.addEventListener('change', updateUI);
 
 // Initialize the app by refreshing transactions (only if signed in)
 refreshTransactions();
@@ -734,3 +753,74 @@ let financeChart = new Chart(
     },
   }
 );
+
+// -----------------------
+// Chart Update Functions
+// -----------------------
+function updateIncomeExpenseChart(filteredTransactions) {
+  const income = filteredTransactions
+    .filter((t) => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const expense = filteredTransactions
+    .filter(
+      (t) =>
+        t.type === 'expense' &&
+        t.category !== 'Credit Given' &&
+        t.category !== 'Crypto Investment'
+    )
+    .reduce((sum, t) => sum + t.amount, 0);
+  const creditGiven = filteredTransactions
+    .filter((t) => t.type === 'expense' && t.category === 'Credit Given')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const cryptoInvestment = filteredTransactions
+    .filter((t) => t.type === 'expense' && t.category === 'Crypto Investment')
+    .reduce((sum, t) => sum + t.amount, 0);
+  incomeExpenseChart.data.datasets[0].data = [
+    income,
+    expense,
+    creditGiven,
+    cryptoInvestment,
+  ];
+  incomeExpenseChart.update();
+}
+
+function updateIncomeChart(filteredTransactions) {
+  const incomeData = filteredTransactions
+    .filter((t) => t.type === 'income')
+    .reduce((acc, t) => {
+      acc[t.category] = (acc[t.category] || 0) + t.amount;
+      return acc;
+    }, {});
+  incomeChart.data.labels = Object.keys(incomeData);
+  incomeChart.data.datasets[0].data = Object.values(incomeData);
+  incomeChart.data.datasets[0].backgroundColor = incomeChart.data.labels.map(
+    (_, index) => {
+      const hue = (index * 45 + 30) % 360;
+      return `hsl(${hue}, 70%, 70%)`;
+    }
+  );
+  incomeChart.update();
+}
+
+function updateFinanceChart(filteredTransactions) {
+  const expenseData = filteredTransactions
+    .filter(
+      (t) =>
+        t.type === 'expense' &&
+        t.category !== 'Credit Given' &&
+        t.category !== 'Crypto Investment'
+    )
+    .reduce((acc, t) => {
+      acc[t.category] = (acc[t.category] || 0) + t.amount;
+      return acc;
+    }, {});
+  financeChart.data.labels = Object.keys(expenseData);
+  financeChart.data.datasets[0].data = Object.values(expenseData);
+  financeChart.data.datasets[0].backgroundColor = financeChart.data.labels.map(
+    (_, index) => {
+      const hue = (index * 45) % 360;
+      return `hsl(${hue}, 70%, 70%)`;
+    }
+  );
+  financeChart.update();
+}
