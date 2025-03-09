@@ -25,6 +25,8 @@ const auth = getAuth();
 
 let transactions = []; // Global transactions array
 let currentEditId = null; // To track the editing transaction
+let currentPage = 1;
+const itemsPerPage = 10;
 
 // -----------------------
 // DOM References
@@ -54,10 +56,9 @@ const creditGivenByAccountEl = document.getElementById('creditGivenByAccount');
 const cryptoInvestmentByAccountEl = document.getElementById(
   'cryptoInvestmentByAccount'
 );
-// New container for net earnings by account
-// (Ensure your HTML contains an element with ID 'netEarningByAccount')
+const netEarningByAccountEl = document.getElementById('netEarningByAccount');
 
-// New Filter Controls (ensure these exist in your HTML)
+// Additional Filter Controls
 const filterType = document.getElementById('filterType');
 const filterAccount = document.getElementById('filterAccount');
 const filterCategory = document.getElementById('filterCategory');
@@ -66,6 +67,8 @@ const personNameField = document.getElementById('personNameField');
 const personNameInput = document.getElementById('personName');
 const otherCategoryField = document.getElementById('otherCategoryField');
 const otherCategoryInput = document.getElementById('otherCategory');
+
+const paginationContainer = document.getElementById('paginationContainer');
 
 // -----------------------
 // Firebase Auth Handling
@@ -125,16 +128,44 @@ const incomeCategories = [
   'iLearnCode',
   'Other',
 ];
-const expenseCategories = [
-  // Regular expense categories (Credit Given and Crypto Investment will be inserted separately)
-  'Work Expense',
-  'Leisure',
-  'Other',
-];
+const expenseCategories = ['Work Expense', 'Leisure', 'Other'];
 
 // -----------------------
 // Helper Functions
 // -----------------------
+
+// Populate the month filter (with "All" option)
+function populateMonthFilter() {
+  monthFilter.innerHTML = '';
+  const allOption = document.createElement('option');
+  allOption.value = 'all';
+  allOption.textContent = 'All';
+  monthFilter.appendChild(allOption);
+  const currentDate = new Date();
+  for (let i = 0; i < 12; i++) {
+    const date = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() - i,
+      1
+    );
+    const monthYear = date.toLocaleString('default', {
+      month: 'long',
+      year: 'numeric',
+    });
+    const option = document.createElement('option');
+    option.value = formatDateToMonth(date);
+    option.textContent = monthYear;
+    monthFilter.appendChild(option);
+  }
+}
+populateMonthFilter();
+
+// Format a Date object to "YYYY-MM"
+function formatDateToMonth(date) {
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+  return year + '-' + (month < 10 ? '0' + month : month);
+}
 
 // Populate the category dropdown based on the selected type
 function populateCategoryDropdown() {
@@ -146,7 +177,6 @@ function populateCategoryDropdown() {
   if (selectedType === 'income') {
     options = incomeCategories;
   } else {
-    // For expenses, prepend both "Credit Given" and "Crypto Investment"
     options = ['Credit Given', 'Crypto Investment', ...expenseCategories];
   }
   options.forEach((opt) => {
@@ -184,7 +214,6 @@ categorySelect.addEventListener('change', function () {
     personNameInput.value = '';
     personNameInput.removeAttribute('required');
   } else {
-    // For Crypto Investment or any regular category, hide extra fields
     personNameField.style.display = 'none';
     personNameInput.value = '';
     personNameInput.removeAttribute('required');
@@ -194,49 +223,27 @@ categorySelect.addEventListener('change', function () {
   }
 });
 
-// Format a Date object to "YYYY-MM"
-function formatDateToMonth(date) {
-  const month = date.getMonth() + 1;
-  const year = date.getFullYear();
-  return year + '-' + (month < 10 ? '0' + month : month);
-}
-
-// Populate month filter (past 12 months)
-function populateMonthFilter() {
-  const currentDate = new Date();
-  for (let i = 0; i < 12; i++) {
-    const date = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() - i,
-      1
-    );
-    const monthYear = date.toLocaleString('default', {
-      month: 'long',
-      year: 'numeric',
-    });
-    const option = document.createElement('option');
-    option.value = formatDateToMonth(date);
-    option.textContent = monthYear;
-    monthFilter.appendChild(option);
-  }
-}
-populateMonthFilter();
-
-// Call populateCategoryDropdown() on page load to ensure dropdown is populated.
+// Call populateCategoryDropdown() on page load.
 populateCategoryDropdown();
 
 // -----------------------
 // Additional Filter Event Listeners
 // -----------------------
-if (filterType) {
-  filterType.addEventListener('change', updateUI);
-}
-if (filterAccount) {
-  filterAccount.addEventListener('change', updateUI);
-}
-if (filterCategory) {
-  filterCategory.addEventListener('change', updateUI);
-}
+if (filterType)
+  filterType.addEventListener('change', () => {
+    currentPage = 1;
+    updateUI();
+  });
+if (filterAccount)
+  filterAccount.addEventListener('change', () => {
+    currentPage = 1;
+    updateUI();
+  });
+if (filterCategory)
+  filterCategory.addEventListener('change', () => {
+    currentPage = 1;
+    updateUI();
+  });
 
 // -----------------------
 // Firestore CRUD Functions
@@ -281,6 +288,29 @@ async function firestoreUpdateTransaction(transactionId, updatedTransaction) {
 }
 
 // -----------------------
+// Pagination Rendering
+// -----------------------
+function renderPagination(totalItems) {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  paginationContainer.innerHTML = '';
+  for (let page = 1; page <= totalPages; page++) {
+    const btn = document.createElement('button');
+    btn.textContent = page;
+    btn.className = 'px-3 py-1 mx-1 border rounded';
+    if (page === currentPage) {
+      btn.classList.add('bg-indigo-500', 'text-white');
+    } else {
+      btn.classList.add('bg-white', 'text-indigo-500');
+    }
+    btn.addEventListener('click', () => {
+      currentPage = page;
+      updateUI();
+    });
+    paginationContainer.appendChild(btn);
+  }
+}
+
+// -----------------------
 // UI Update Functions
 // -----------------------
 async function refreshTransactions() {
@@ -291,12 +321,14 @@ async function refreshTransactions() {
 
 function updateUI() {
   const selectedMonth = monthFilter.value;
-  // Filter transactions by month (using the transaction date)
-  let filteredTransactions = transactions.filter((t) => {
-    return formatDateToMonth(new Date(t.date)) === selectedMonth;
-  });
+  let filteredTransactions = transactions;
+  if (selectedMonth !== 'all') {
+    filteredTransactions = filteredTransactions.filter((t) => {
+      return formatDateToMonth(new Date(t.date)) === selectedMonth;
+    });
+  }
 
-  // Apply additional filters from the new filter controls:
+  // Apply additional filters:
   if (filterType && filterType.value) {
     filteredTransactions = filteredTransactions.filter(
       (t) => t.type === filterType.value
@@ -316,42 +348,17 @@ function updateUI() {
   // Sort transactions by date descending (most recent first)
   filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  console.log('Updating UI for month:', selectedMonth, filteredTransactions);
+  // Pagination: display only items for current page.
+  const totalItems = filteredTransactions.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
-  // Calculate totals:
-  const totalIncome = filteredTransactions
-    .filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-  // For expenses, exclude Credit Given and Crypto Investment
-  const totalExpense = filteredTransactions
-    .filter(
-      (t) =>
-        t.type === 'expense' &&
-        t.category !== 'Credit Given' &&
-        t.category !== 'Crypto Investment'
-    )
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalCreditGiven = filteredTransactions
-    .filter((t) => t.type === 'expense' && t.category === 'Credit Given')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalCryptoInvestment = filteredTransactions
-    .filter((t) => t.type === 'expense' && t.category === 'Crypto Investment')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  incomeTotalElement.innerText = 'MAD' + totalIncome.toFixed(2);
-  expenseTotalElement.innerText = 'MAD' + totalExpense.toFixed(2);
-  creditGivenTotalElement.innerText = 'MAD' + totalCreditGiven.toFixed(2);
-  cryptoInvestmentTotalElement.innerText =
-    'MAD' + totalCryptoInvestment.toFixed(2);
-  // Net Earnings: income - expense (do not add Credit Given or Crypto Investment)
-  netEarningsElement.innerText =
-    'MAD' + (totalIncome - totalExpense).toFixed(2);
-
-  // Update transactions table
+  // Render transactions table
   transactionTableBody.innerHTML = '';
-  filteredTransactions.forEach((t) => {
-    // Use different row classes:
-    // Income: green, Expense: red, Credit Given: yellow, Crypto Investment: light blue
+  paginatedTransactions.forEach((t) => {
     let rowClass = '';
     if (t.type === 'income') {
       rowClass = 'bg-green-50';
@@ -389,11 +396,9 @@ function updateUI() {
     `;
     transactionTableBody.appendChild(row);
 
-    // Attach Edit event
     row.querySelector('.edit-btn').addEventListener('click', function () {
       window.editTransaction(t.id);
     });
-    // Attach Delete event
     row.querySelector('.delete-btn').addEventListener('click', function () {
       if (confirm('Are you sure you want to delete this transaction?')) {
         firestoreDeleteTransaction(t.id).then(() => {
@@ -403,12 +408,41 @@ function updateUI() {
     });
   });
 
-  // Update totals by account
+  // Render Pagination Controls
+  renderPagination(totalItems);
+
+  // Calculate Totals:
+  const totalIncome = filteredTransactions
+    .filter((t) => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalExpense = filteredTransactions
+    .filter(
+      (t) =>
+        t.type === 'expense' &&
+        t.category !== 'Credit Given' &&
+        t.category !== 'Crypto Investment'
+    )
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalCreditGiven = filteredTransactions
+    .filter((t) => t.type === 'expense' && t.category === 'Credit Given')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalCryptoInvestment = filteredTransactions
+    .filter((t) => t.type === 'expense' && t.category === 'Crypto Investment')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  incomeTotalElement.innerText = 'MAD' + totalIncome.toFixed(2);
+  expenseTotalElement.innerText = 'MAD' + totalExpense.toFixed(2);
+  creditGivenTotalElement.innerText = 'MAD' + totalCreditGiven.toFixed(2);
+  cryptoInvestmentTotalElement.innerText =
+    'MAD' + totalCryptoInvestment.toFixed(2);
+  netEarningsElement.innerText =
+    'MAD' + (totalIncome - totalExpense).toFixed(2);
+
+  // Update Totals by Account & Net Earnings by Account
   updateTotalsByAccount(filteredTransactions);
-  // Update net earnings by account (net = income - expense)
   updateNetEarningByAccount(filteredTransactions);
 
-  // Update charts
+  // Update Charts
   updateIncomeExpenseChart(filteredTransactions);
   updateIncomeChart(filteredTransactions);
   updateFinanceChart(filteredTransactions);
@@ -429,14 +463,12 @@ function updateNetEarningByAccount(filteredTransactions) {
     if (t.type === 'income') {
       incomeByAcc[t.account] = (incomeByAcc[t.account] || 0) + t.amount;
     } else if (t.type === 'expense') {
-      // Only count expenses that are not Credit Given or Crypto Investment
       if (t.category !== 'Credit Given' && t.category !== 'Crypto Investment') {
         expenseByAcc[t.account] = (expenseByAcc[t.account] || 0) + t.amount;
       }
     }
   });
 
-  // Get the union of all accounts
   const allAccounts = new Set([
     ...Object.keys(incomeByAcc),
     ...Object.keys(expenseByAcc),
@@ -446,12 +478,9 @@ function updateNetEarningByAccount(filteredTransactions) {
   allAccounts.forEach((acc) => {
     const income = incomeByAcc[acc] || 0;
     const expense = expenseByAcc[acc] || 0;
-    // Net Earnings by account: income - expense
     netByAcc[acc] = income - expense;
   });
 
-  // Update the net earnings by account section (HTML element with ID 'netEarningByAccount')
-  const netEarningByAccountEl = document.getElementById('netEarningByAccount');
   netEarningByAccountEl.innerHTML = '';
   const container = document.createElement('div');
   container.className = 'grid grid-cols-1 sm:grid-cols-2 gap-4';
@@ -529,7 +558,7 @@ function updateTotalsByAccount(filteredTransactions) {
   for (const acc in creditGivenByAcc) {
     const card = document.createElement('div');
     card.className = 'rounded-xl p-4 shadow text-white';
-    card.style.backgroundColor = '#F59E0B'; // Tailwind yellow-500 hex color
+    card.style.backgroundColor = '#F59E0B';
     card.innerHTML = `<div class="font-bold text-lg">${acc}</div>
                       <div class="text-sm">MAD ${creditGivenByAcc[acc].toFixed(
                         2
@@ -581,7 +610,6 @@ addTransactionForm.addEventListener('submit', async function (event) {
       return;
     }
   }
-  // Use today's date in ISO format (YYYY-MM-DD)
   const date = new Date().toISOString().split('T')[0];
 
   const transaction = {
@@ -606,6 +634,7 @@ addTransactionForm.addEventListener('submit', async function (event) {
     addTransactionForm.reset();
     personNameField.style.display = 'none';
     otherCategoryField.style.display = 'none';
+    currentPage = 1; // reset to page 1 after submission
     await refreshTransactions();
   } catch (error) {
     console.error('Error saving transaction:', error);
@@ -667,12 +696,25 @@ window.removeTransaction = async function (transactionId) {
 };
 
 // Listen for month filter changes
-monthFilter.addEventListener('change', updateUI);
-
-// Also listen for the additional filter controls
-if (filterType) filterType.addEventListener('change', updateUI);
-if (filterAccount) filterAccount.addEventListener('change', updateUI);
-if (filterCategory) filterCategory.addEventListener('change', updateUI);
+monthFilter.addEventListener('change', () => {
+  currentPage = 1;
+  updateUI();
+});
+if (filterType)
+  filterType.addEventListener('change', () => {
+    currentPage = 1;
+    updateUI();
+  });
+if (filterAccount)
+  filterAccount.addEventListener('change', () => {
+    currentPage = 1;
+    updateUI();
+  });
+if (filterCategory)
+  filterCategory.addEventListener('change', () => {
+    currentPage = 1;
+    updateUI();
+  });
 
 // Initialize the app by refreshing transactions (only if signed in)
 refreshTransactions();
